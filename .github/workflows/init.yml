@@ -1,0 +1,75 @@
+name: Init
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        default: 'ubuntu-latest'
+        description: 'runner'
+        type: choice
+        options:
+          - self-hosted
+          - ubuntu-latest
+          - windows-latest
+          - k8s
+        required: true
+
+jobs:
+  init:
+    runs-on: ${{inputs.runner}}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Check files
+        run: |
+          printf "\n\n"
+
+          printf "\e[93m%s\e[0m\n" \
+            "RUNNER_WORKSPACE:     \"${RUNNER_WORKSPACE}\"" \
+            "GITHUB_WORKSPACE:     \"${GITHUB_WORKSPACE}\"" \
+            "GITHUB_ACTION_PATH:   \"${GITHUB_ACTION_PATH}\"" \
+            "---                   ---" \
+            "gh_token:             \"${GITHUB_TOKEN::8}****************\"" \
+            "nproc:                \"$(nproc)\"" \
+            "---                   ---"
+
+          printf "\n\n"
+
+          pwd
+          tree -ahI ".git" --dirsfirst --du
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        shell: bash
+
+      - name: Create Docker Container
+        run: bash "create-docker-container.sh"
+        shell: bash
+
+      - name: Compile Python on Docker Container
+        run: docker exec -w "/root/data" "python-build" bash "compile-python.sh"
+        shell: bash
+
+      - name: Archive Python on Docker Container
+        run: docker exec -w "/root/data" "python-build" bash "archive-python.sh"
+        shell: bash
+
+      - name: Copy Python from Docker Container
+        run: docker cp "python-build:/root/data/python-3.12.zip" "python-3.12.zip"
+        shell: bash
+
+      - name: Delete current tag and release
+        uses: dev-drprasad/delete-tag-and-release@v1.0.1
+        with:
+          tag_name: '3.12'
+          github_token: '${{ secrets.GITHUB_TOKEN }}'
+          delete_release: true
+
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: '3.12'
+          artifacts: 'python-3.12.zip'
+          generateReleaseNotes: true
