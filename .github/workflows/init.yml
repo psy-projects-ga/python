@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check files
         run: |
@@ -59,17 +59,14 @@ jobs:
         run: docker cp "python-build:/root/data/python-3.12.zip" "python-3.12.zip"
         shell: bash
 
-      - name: Delete current tag and release
-        uses: dev-drprasad/delete-tag-and-release@v1.0.1
-        with:
-          tag_name: '3.12'
-          github_token: '${{ secrets.GITHUB_TOKEN }}'
-          delete_release: true
+      - name: 'gh release create 3.12.1'
+        run: |
+          gh release view "3.12.1" &>/dev/null && gh release delete "3.12.1"
 
-      - name: Create release
-        uses: ncipollo/release-action@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: '3.12'
-          artifacts: 'python-3.12.zip'
-          generateReleaseNotes: true
+          gh release create "3.12.1" \
+            --title "3.12" \
+            --notes "Python 3.12" \
+            --generate-notes \
+            python-3.12.zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -5,7 +5,7 @@ function create_docker_container() {
     --name "python-build" \
     --detach \
     --volume "${PWD}:/root/data" \
-    "ubuntu:23.04" \
+    "ubuntu:24.04" \
     tail -f /dev/null
 
   docker container ls --all
